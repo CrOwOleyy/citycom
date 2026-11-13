@@ -38,6 +38,13 @@ export const BuiltInThemeConfig = new Map([
     },
   ],
   [
+    "citycom-dark@citycom",
+    {
+      version: "1.1.0",
+      path: "resource://builtin-themes/citycom/",
+    },
+  ],
+  [
     "firefox-alpenglow@mozilla.org",
     {
       version: "1.5.3",

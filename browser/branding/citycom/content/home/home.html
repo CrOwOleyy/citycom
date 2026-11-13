@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; script-src chrome:; style-src chrome:; img-src chrome: data:"
+    />
+    <meta name="color-scheme" content="dark" />
+    <title>Nouvel onglet</title>
+    <link rel="icon" href="chrome://branding/content/icon32.png" />
+    <link rel="stylesheet" href="chrome://branding/content/home/home.css" />
+    <script src="chrome://branding/content/home/home.js" defer></script>
+  </head>
+  <body>
+    <main class="terminal frame">
+      <header class="bar">
+        <img class="logo" src="chrome://branding/content/about-logo.svg" alt="" />
+        <span class="brand">CityCom</span>
+        <span class="sep">//</span>
+        <span class="node">Terminal personnel</span>
+        <span class="spacer"></span>
+        <span class="led" aria-hidden="true"></span>
+        <span id="bar-time" class="mono"></span>
+      </header>
+
+      <div class="panels">
+        <section class="panel frame id-panel" aria-label="Horloge">
+          <p class="label">Session</p>
+          <p id="greeting"></p>
+          <h1 id="clock" class="mono"></h1>
+          <p id="date"></p>
+        </section>
+
+        <section class="panel frame main-panel">
+          <form id="search" class="frame" autocomplete="off">
+            <span class="prompt" aria-hidden="true">&gt;</span>
+            <input id="query" type="search" placeholder="Rechercher sur le réseau" aria-label="Rechercher" />
+            <select id="engine" aria-label="Moteur de recherche"></select>
+            <button type="submit">Go</button>
+          </form>
+
+          <div class="slots-head">
+            <p class="label">Raccourcis</p>
+            <p class="hint">Touches 1 à 9</p>
+          </div>
+          <section id="shortcuts" aria-label="Raccourcis"></section>
+        </section>
+      </div>
+
+      <footer class="bar status">
+        <span>Moteur&nbsp;: <b id="status-engine"></b></span>
+        <span>Emplacements&nbsp;: <b id="status-slots"></b></span>
+        <span class="spacer"></span>
+        <span>Connexion locale</span>
+      </footer>
+    </main>
+
+    <dialog id="editor" class="frame">
+      <form method="dialog" id="editor-form">
+        <h2 class="label">Nouveau raccourci</h2>
+        <label>Nom <input id="edit-name" required maxlength="24" /></label>
+        <label>Adresse <input id="edit-url" required placeholder="exemple.com" /></label>
+        <menu>
+          <button value="cancel" formnovalidate>Annuler</button>
+          <button value="save" class="primary">Ajouter</button>
+        </menu>
+      </form>
+    </dialog>
+  </body>
+</html>

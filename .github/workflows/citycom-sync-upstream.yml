@@ -1,0 +1,79 @@
+name: CityCom - Sync Firefox upstream
+
+# Merges mozilla-firefox/firefox main into this fork's main every few hours,
+# using GitHub's server-side "Sync fork" so the 6 GB history is never cloned.
+on:
+  schedule:
+    - cron: "23 */4 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  issues: write
+
+concurrency:
+  group: citycom-sync-upstream
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    if: github.repository_owner != 'mozilla-firefox'
+    runs-on: ubuntu-latest
+    env:
+      GH_REPO: ${{ github.repository }}
+      ISSUE_LABEL: sync-upstream
+    steps:
+      - name: Merge upstream main
+        id: merge
+        env:
+          # A fine-grained token with "Contents" and "Workflows" write access is
+          # needed when upstream changes files under .github/workflows.
+          GH_TOKEN: ${{ secrets.SYNC_TOKEN || github.token }}
+        run: |
+          set +e
+          output=$(gh api -X POST "repos/$GH_REPO/merge-upstream" -f branch=main 2>&1)
+          status=$?
+          set -e
+          echo "$output"
+          {
+            echo "output<<EOF"
+            echo "$output"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+          if [ $status -ne 0 ]; then
+            echo "failed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Close resolved sync issues
+        if: steps.merge.outputs.failed != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          for n in $(gh issue list --label "$ISSUE_LABEL" --state open --json number --jq '.[].number'); do
+            gh issue close "$n" --comment "Synchronisation avec Firefox de nouveau OK."
+          done
+
+      - name: Report failure in an issue
+        if: steps.merge.outputs.failed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          OUTPUT: ${{ steps.merge.outputs.output }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          gh label create "$ISSUE_LABEL" --color FFC837 --description "Echec de synchronisation avec Firefox" 2>/dev/null || true
+
+          if echo "$OUTPUT" | grep -qi "workflow"; then
+            reason="Firefox a modifie un fichier dans .github/workflows. Le jeton par defaut de GitHub n'a pas le droit de fusionner ce type de changement. Ajoute un secret SYNC_TOKEN (jeton fine-grained avec les droits Contents et Workflows en ecriture sur ce depot), puis relance l'action."
+          else
+            reason="Les mises a jour de Firefox entrent en conflit avec les modifications de CityCom. Il faut fusionner a la main : git fetch upstream, git merge upstream/main, resoudre les conflits, puis git push origin main."
+          fi
+
+          body=$(printf '%s\n\n**Detail :**\n```\n%s\n```\n\nExecution : %s' "$reason" "$OUTPUT" "$RUN_URL")
+
+          existing=$(gh issue list --label "$ISSUE_LABEL" --state open --json number --jq '.[0].number')
+          if [ -n "$existing" ]; then
+            gh issue comment "$existing" --body "$body"
+          else
+            gh issue create --title "Synchronisation avec Firefox bloquee" --label "$ISSUE_LABEL" --body "$body"
+          fi
+          exit 1

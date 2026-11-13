@@ -1,0 +1,35 @@
+/* CityCom palette, inspired by the default RPOS color scheme. These rules are
+ * unlayered so they win over the layered design-system tokens, but they stay
+ * out of the way of forced colors and increased contrast. */
+
+@media (forced-colors: none) and (prefers-contrast: no-preference) {
+  /* The :not(#citycom) bumps specificity above sheets loaded later. */
+  :root:not(#citycom),
+  :host(.anonymous-content-host) {
+    --citycom-mint: #80ffbe;
+    --citycom-text: #b4f0c8;
+    --citycom-highlight: #64c896;
+    --citycom-deep: #0e7a52;
+    --citycom-alert: #ff8948;
+    --citycom-gold: #ffc837;
+    --citycom-font: Bahnschrift, "Segoe UI", system-ui, sans-serif;
+
+    --color-accent-primary: light-dark(var(--citycom-deep), var(--citycom-mint));
+    --color-accent-primary-hover: light-dark(#0b6343, #a6ffd2);
+    --color-accent-primary-active: light-dark(#084d34, #c9ffe4);
+    --color-accent-primary-selected: light-dark(var(--citycom-deep), var(--citycom-mint));
+    --button-text-color-primary: light-dark(#ffffff, #03140c);
+    --button-text-color-primary-hover: light-dark(#ffffff, #03140c);
+    --button-text-color-primary-active: light-dark(#ffffff, #03140c);
+    --link-color: light-dark(var(--citycom-deep), var(--citycom-mint));
+    --link-color-hover: light-dark(#0b6343, #a6ffd2);
+    --link-color-active: light-dark(#084d34, #c9ffe4);
+    --link-color-visited: light-dark(#0b6343, var(--citycom-highlight));
+
+    --border-radius-xsmall: 1px;
+    --border-radius-small: 2px;
+    --border-radius-medium: 3px;
+    --border-radius-large: 4px;
+    --border-radius-xlarge: 6px;
+  }
+}

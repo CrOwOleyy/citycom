@@ -1,0 +1,17 @@
+# CityCom - build final optimise pour CE processeur (PGO + LTO + CPU natif).
+# Usage : MOZCONFIG=mozconfig-citycom-release ./mach build
+# Attention : long (plusieurs heures sous Windows) et le binaire ne tourne que sur ce type de CPU.
+ac_add_options --enable-application=browser
+ac_add_options --with-branding=browser/branding/citycom
+mk_add_options MOZ_OBJDIR=@TOPSRCDIR@/obj-citycom-release
+
+ac_add_options --enable-release
+ac_add_options --disable-debug
+ac_add_options --enable-optimize="-O2 /clang:-march=native"
+ac_add_options --enable-lto=cross
+ac_add_options MOZ_PGO=1
+export RUSTFLAGS="-C target-cpu=native"
+
+ac_add_options --disable-updater
+ac_add_options --disable-crashreporter
+ac_add_options --disable-default-browser-agent

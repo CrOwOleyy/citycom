@@ -1,0 +1,62 @@
+{
+  "manifest_version": 2,
+
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "citycom-dark@citycom"
+    }
+  },
+
+  "name": "CityCom",
+  "description": "Thème sombre vert de CityCom, inspiré du RPOS.",
+  "author": "CityCom",
+  "version": "1.1.0",
+  "icons": { "32": "icon.svg" },
+
+  "theme": {
+    "colors": {
+      "frame": "#040806",
+      "frame_inactive": "#060b09",
+      "tab_background_text": "#7fbf9e",
+      "tab_selected": "#0c1a13",
+      "tab_text": "#d6f5e2",
+      "tab_line": "#80ffbe",
+      "tab_loading": "#80ffbe",
+      "tab_background_separator": "#1f4434",
+      "toolbar": "#0c1a13",
+      "toolbar_text": "#b4f0c8",
+      "toolbar_top_separator": "transparent",
+      "toolbar_bottom_separator": "#1f4434",
+      "toolbar_vertical_separator": "#1f4434",
+      "toolbar_field": "#030605",
+      "toolbar_field_text": "#d6f5e2",
+      "toolbar_field_border": "#1f4434",
+      "toolbar_field_focus": "#050a08",
+      "toolbar_field_text_focus": "#d6f5e2",
+      "toolbar_field_border_focus": "#80ffbe",
+      "toolbar_field_highlight": "rgba(128, 255, 190, 0.35)",
+      "toolbar_field_highlight_text": "#ffffff",
+      "button_background_hover": "rgba(128, 255, 190, 0.14)",
+      "button_background_active": "rgba(128, 255, 190, 0.28)",
+      "icons": "#b4f0c8",
+      "icons_attention": "#ffc837",
+      "bookmark_text": "#b4f0c8",
+      "popup": "#0c1a13",
+      "popup_text": "#d6f5e2",
+      "popup_border": "#1f4434",
+      "popup_highlight": "#64c896",
+      "popup_highlight_text": "#03140c",
+      "sidebar": "#08110d",
+      "sidebar_text": "#d6f5e2",
+      "sidebar_border": "#1f4434",
+      "sidebar_highlight": "#64c896",
+      "sidebar_highlight_text": "#03140c",
+      "ntp_background": "#050a08",
+      "ntp_text": "#d6f5e2"
+    },
+    "properties": {
+      "color_scheme": "dark",
+      "content_color_scheme": "dark"
+    }
+  }
+}

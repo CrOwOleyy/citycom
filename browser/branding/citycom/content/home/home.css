@@ -1,0 +1,454 @@
+:root {
+  --bg: #030605;
+  --panel: #08110d;
+  --panel-2: #0c1a13;
+  --line: #2a5c46;
+  --line-bright: #80ffbe;
+  --text: #d6f5e2;
+  --text-rpos: #b4f0c8;
+  --muted: #6f9c86;
+  --mint: #80ffbe;
+  --highlight: #64c896;
+  --gold: #ffc837;
+  --ink: #03140c;
+  --font: Bahnschrift, "Segoe UI", system-ui, sans-serif;
+  --mono: Bahnschrift, Consolas, monospace;
+  color-scheme: dark;
+  font-family: var(--font);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+}
+
+body {
+  background:
+    repeating-linear-gradient(to bottom, rgb(128 255 190 / 0.03) 0 1px, transparent 1px 3px),
+    radial-gradient(ellipse 80% 50% at 50% 0%, rgb(100 200 150 / 0.14), transparent 70%),
+    var(--bg);
+  color: var(--text);
+  display: flex;
+  justify-content: center;
+  padding: 9vh 16px 40px;
+}
+
+/* RPOS-style chamfered frame: the element paints the outline, ::before the panel. */
+.frame {
+  --cut: 12px;
+  --fill: var(--panel);
+  position: relative;
+  isolation: isolate;
+  background: var(--line);
+  clip-path: polygon(
+    var(--cut) 0,
+    100% 0,
+    100% calc(100% - var(--cut)),
+    calc(100% - var(--cut)) 100%,
+    0 100%,
+    0 var(--cut)
+  );
+}
+
+.frame::before {
+  content: "";
+  position: absolute;
+  inset: 1px;
+  z-index: -1;
+  background: var(--fill);
+  clip-path: inherit;
+}
+
+.terminal {
+  --cut: 22px;
+  --fill: rgb(5 10 8 / 0.92);
+  width: min(920px, 100%);
+  padding: 0 18px 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.label {
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--highlight);
+}
+
+.mono {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  font-size: 0.8rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-rpos);
+}
+
+.bar:first-child {
+  border-bottom: 1px solid var(--line);
+  margin-inline: -18px;
+  padding-inline: 26px 18px;
+  background: linear-gradient(to right, rgb(128 255 190 / 0.08), transparent 60%);
+}
+
+.logo {
+  width: 22px;
+  height: 22px;
+}
+
+.brand {
+  font-weight: 700;
+  color: var(--mint);
+}
+
+.sep,
+.node {
+  color: var(--muted);
+}
+
+.spacer {
+  flex: 1;
+}
+
+.led {
+  width: 7px;
+  height: 7px;
+  background: var(--mint);
+  box-shadow: 0 0 8px var(--mint);
+  animation: blink 2.4s steps(2, jump-none) infinite;
+}
+
+@keyframes blink {
+  50% {
+    opacity: 0.25;
+  }
+}
+
+.panels {
+  display: grid;
+  grid-template-columns: 250px 1fr;
+  gap: 14px;
+  padding-block: 18px;
+}
+
+.panel {
+  --fill: var(--panel);
+  padding: 18px 20px 20px;
+}
+
+.id-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+#greeting {
+  margin: 10px 0 0;
+  font-size: 1.15rem;
+  color: var(--text);
+}
+
+#clock {
+  margin: 4px 0;
+  font-size: clamp(3rem, 8vw, 4.4rem);
+  font-weight: 300;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  color: var(--mint);
+  text-shadow: 0 0 18px rgb(128 255 190 / 0.35);
+}
+
+#date {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+  letter-spacing: 0.06em;
+}
+
+#date::first-letter {
+  text-transform: uppercase;
+}
+
+.main-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+#search {
+  --cut: 10px;
+  --fill: var(--bg);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px;
+  transition: background 120ms;
+}
+
+#search:focus-within {
+  background: var(--mint);
+}
+
+.prompt {
+  padding-inline: 12px 4px;
+  color: var(--mint);
+  font-weight: 700;
+}
+
+#query {
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+  border: none;
+  color: var(--text);
+  font: inherit;
+  font-size: 1.05rem;
+  padding: 10px 6px;
+  outline: none;
+}
+
+#query::placeholder {
+  color: var(--muted);
+}
+
+#engine {
+  field-sizing: content;
+  background: var(--panel-2);
+  color: var(--text-rpos);
+  border: 1px solid var(--line);
+  padding: 8px 10px;
+  font: inherit;
+  font-size: 0.75rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+#engine option {
+  background: var(--panel);
+  color: var(--text);
+}
+
+#search button,
+dialog menu button {
+  --cut: 7px;
+  border: none;
+  padding: 10px 18px;
+  background: var(--highlight);
+  color: var(--ink);
+  font: inherit;
+  font-weight: 700;
+  font-size: 0.8rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  cursor: pointer;
+  clip-path: polygon(var(--cut) 0, 100% 0, 100% calc(100% - var(--cut)), calc(100% - var(--cut)) 100%, 0 100%, 0 var(--cut));
+}
+
+#search button:hover,
+dialog menu button.primary:hover {
+  background: var(--mint);
+}
+
+.slots-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.hint {
+  margin: 0;
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+#shortcuts {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
+  gap: 8px;
+}
+
+.slot {
+  --cut: 8px;
+  --fill: var(--panel-2);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  aspect-ratio: 1;
+  padding: 8px 6px 6px;
+  color: var(--text);
+  text-decoration: none;
+  border: none;
+  font: inherit;
+  cursor: pointer;
+}
+
+.slot:hover,
+.slot:focus-visible {
+  --fill: #10241a;
+  background: var(--mint);
+  outline: none;
+}
+
+.slot .glyph {
+  font-size: 1.7rem;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--mint);
+}
+
+.slot .name {
+  max-width: 100%;
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-rpos);
+}
+
+.slot .index {
+  position: absolute;
+  bottom: 5px;
+  inset-inline-start: 8px;
+  font-size: 0.65rem;
+  color: var(--muted);
+}
+
+.slot.add {
+  --fill: transparent;
+  background: repeating-linear-gradient(45deg, var(--line) 0 1px, transparent 1px 6px);
+}
+
+.slot.add .glyph {
+  color: var(--muted);
+}
+
+.remove {
+  position: absolute;
+  top: 5px;
+  inset-inline-end: 5px;
+  width: 20px;
+  height: 20px;
+  border: 1px solid var(--line);
+  background: var(--bg);
+  color: var(--gold);
+  font-size: 0.7rem;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0;
+}
+
+.slot:hover .remove,
+.remove:focus-visible {
+  opacity: 1;
+}
+
+.status {
+  border-top: 1px solid var(--line);
+  margin-inline: -18px;
+  padding-inline: 18px 26px;
+  font-size: 0.7rem;
+  color: var(--muted);
+}
+
+.status b {
+  font-weight: 600;
+  color: var(--text-rpos);
+}
+
+dialog {
+  position: fixed;
+  --cut: 14px;
+  --fill: var(--panel);
+  border: none;
+  padding: 22px;
+  width: min(380px, 90vw);
+  color: var(--text);
+}
+
+dialog::backdrop {
+  background:
+    repeating-linear-gradient(to bottom, rgb(0 0 0 / 0.3) 0 1px, transparent 1px 3px),
+    rgb(0 0 0 / 0.6);
+}
+
+dialog h2 {
+  margin-bottom: 16px;
+}
+
+dialog label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 12px;
+  font-size: 0.75rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+dialog input {
+  background: var(--bg);
+  border: 1px solid var(--line);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.95rem;
+  letter-spacing: normal;
+  text-transform: none;
+  padding: 9px 10px;
+}
+
+dialog input:focus {
+  border-color: var(--mint);
+  outline: none;
+}
+
+dialog menu {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin: 8px 0 0;
+  padding: 0;
+}
+
+dialog menu button:not(.primary) {
+  background: var(--panel-2);
+  color: var(--text-rpos);
+}
+
+@media (max-width: 640px) {
+  .panels {
+    grid-template-columns: 1fr;
+  }
+
+  .node,
+  .sep {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation: none !important;
+    transition: none !important;
+  }
+}

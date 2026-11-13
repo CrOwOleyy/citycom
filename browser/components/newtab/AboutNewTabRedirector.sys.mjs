@@ -61,6 +61,7 @@ const PREF_NEWTAB_SELF_LOADING =
   "browser.newtabpage.activity-stream.selfLoading.enabled";
 const PREF_NEWTAB_REMOTE_RENDERER_ENABLED =
   "browser.newtabpage.activity-stream.remote-renderer.enabled";
+const PREF_NEWTAB_CUSTOM_PAGE_URL = "browser.newtabpage.customPageURL";
 /**
  * The AboutHomeStartupCacheChild is responsible for connecting the
  * AboutNewTabRedirectorChild with a cached document and script for about:home
@@ -416,6 +417,13 @@ class BaseAboutNewTabRedirector {
       PREF_NEWTAB_REMOTE_RENDERER_ENABLED,
       false
     );
+
+    XPCOMUtils.defineLazyPreferenceGetter(
+      this,
+      "customPageURL",
+      PREF_NEWTAB_CUSTOM_PAGE_URL,
+      ""
+    );
   }
 
   /**
@@ -425,6 +433,10 @@ class BaseAboutNewTabRedirector {
    * the newtab page has no effect on the result of this function.
    */
   get defaultURL() {
+    if (this.customPageURL) {
+      return this.customPageURL;
+    }
+
     if (this.remoteRendererEnabled) {
       return "resource://newtab/data/content/remote-renderer-host.html";
     }

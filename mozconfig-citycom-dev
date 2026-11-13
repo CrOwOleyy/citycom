@@ -1,0 +1,6 @@
+# CityCom - build rapide pour iterer sur l'interface (telecharge le moteur compile par Mozilla).
+# Usage : MOZCONFIG=mozconfig-citycom-dev ./mach build
+ac_add_options --enable-application=browser
+ac_add_options --enable-artifact-builds
+ac_add_options --with-branding=browser/branding/citycom
+mk_add_options MOZ_OBJDIR=@TOPSRCDIR@/obj-citycom-dev

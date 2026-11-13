@@ -1,0 +1,39 @@
+/* CityCom look for in-content pages (settings, add-ons, about: pages). */
+
+@import url("chrome://branding/content/citycom/tokens.css");
+
+@media (forced-colors: none) and (prefers-contrast: no-preference) {
+  /* The :not(#citycom) bumps specificity above page sheets loaded later. */
+  :root:not(#citycom) {
+    --background-color-canvas: light-dark(#f2f8f4, #050a08);
+    --background-color-box: light-dark(#ffffff, #0b1611);
+    --card-background-color: light-dark(#ffffff, #0b1611);
+    --text-color: light-dark(#0b1f16, #d6f5e2);
+    --text-color-deemphasized: light-dark(#3d5a4c, #7fa894);
+    --border-color: light-dark(#9cc2b0, #1f4434);
+    --border-color-interactive: light-dark(#6c9a85, #2f6b52);
+    --citycom-scanlines: repeating-linear-gradient(
+      to bottom,
+      light-dark(transparent, rgb(128 255 190 / 0.025)) 0 1px,
+      transparent 1px 3px
+    );
+  }
+
+  html {
+    background-image: var(--citycom-scanlines);
+  }
+
+  h1,
+  h2,
+  .header-name,
+  .category-name {
+    font-family: var(--citycom-font);
+    letter-spacing: 0.02em;
+  }
+
+  h1,
+  .header-name {
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+}
