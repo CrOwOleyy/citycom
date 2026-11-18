@@ -1,0 +1,97 @@
+name: CityCom - Release native (PC)
+
+# Full optimized build (PGO, LTO, native CPU) on the owner's own PC through a
+# self-hosted runner labelled "citycom-native". The runner reuses the local
+# checkout given by its CITYCOM_SRC variable and builds in a git worktree.
+# Never add a pull_request trigger here: it would let anyone run code on that PC.
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag de la release (ex. v1.0). Il est créé s'il n'existe pas."
+        required: true
+
+permissions:
+  contents: write
+
+concurrency:
+  group: citycom-release-native
+  cancel-in-progress: false
+
+jobs:
+  native:
+    if: github.repository == 'CrOwOleyy/citycom'
+    runs-on: [self-hosted, Windows, citycom-native]
+    timeout-minutes: 900
+    env:
+      TAG: ${{ github.event.inputs.tag || github.ref_name }}
+      PYTHON: C:\mozilla-build\python3\python.exe
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    defaults:
+      run:
+        shell: powershell
+    steps:
+      - name: Prepare worktree
+        run: |
+          $ErrorActionPreference = 'Continue'
+          if (-not $env:CITYCOM_SRC) { throw "Variable CITYCOM_SRC manquante dans le .env du runner" }
+          $work = Join-Path $env:USERPROFILE "citycom-native"
+          git -C $env:CITYCOM_SRC fetch -q origin main --tags --force
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if (Test-Path (Join-Path $work ".git")) {
+            git -C $work checkout --detach --force $env:GITHUB_SHA
+          } else {
+            git -C $env:CITYCOM_SRC worktree add --detach $work $env:GITHUB_SHA
+          }
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          [IO.File]::AppendAllText($env:GITHUB_ENV, "WORK=$work`n")
+
+      - name: Update French translations
+        run: |
+          $ErrorActionPreference = 'Continue'
+          $l10n = Join-Path $env:USERPROFILE ".mozbuild\l10n-central"
+          if (Test-Path (Join-Path $l10n "fr")) {
+            git -C $l10n pull --ff-only
+          } else {
+            git clone --depth 1 --filter=blob:none --sparse https://github.com/mozilla-l10n/firefox-l10n $l10n
+            git -C $l10n sparse-checkout set fr
+          }
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Build (PGO + LTO)
+        working-directory: ${{ env.WORK }}
+        run: |
+          $ErrorActionPreference = 'Continue'
+          $env:MOZCONFIG = Join-Path $env:WORK "mozconfig-citycom-release"
+          & $env:PYTHON .\mach build
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Package with French language pack
+        working-directory: ${{ env.WORK }}
+        run: |
+          $ErrorActionPreference = 'Continue'
+          $env:MOZCONFIG = Join-Path $env:WORK "mozconfig-citycom-release"
+          & $env:PYTHON .\mach build langpack-fr
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $env:PYTHON .\mach package
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $langpack = Get-ChildItem obj-citycom-release\dist\*\xpi\*.fr.langpack.xpi | Select-Object -First 1
+          $zip = Get-ChildItem obj-citycom-release\dist\*.win64.zip | Select-Object -First 1
+          $out = Join-Path $env:RUNNER_TEMP "CityCom-$env:TAG-win64-natif.zip"
+          & $env:PYTHON browser\branding\citycom\tools\finalize_zip.py $zip.FullName $langpack.FullName $out
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          [IO.File]::AppendAllText($env:GITHUB_ENV, "ZIP=$out`n")
+
+      - name: Publish release
+        run: |
+          $ErrorActionPreference = 'Continue'
+          gh release view $env:TAG *> $null
+          if ($LASTEXITCODE -ne 0) {
+            gh release create $env:TAG --target $env:GITHUB_SHA --title "CityCom $env:TAG" --notes "CityCom build, see assets."
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
+          gh release upload $env:TAG $env:ZIP --clobber
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
