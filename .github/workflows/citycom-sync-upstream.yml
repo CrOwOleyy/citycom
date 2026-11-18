@@ -1,11 +1,19 @@
 name: CityCom - Sync Firefox upstream
 
-# Merges mozilla-firefox/firefox main into this fork's main every few hours,
-# using GitHub's server-side "Sync fork" so the 6 GB history is never cloned.
+# Merges mozilla-firefox/firefox main into this fork's main every few hours.
+# The fast path is GitHub's server-side "Sync fork" API. That API refuses to
+# touch upstream changes under .github/workflows, and it rejects fine-grained
+# tokens, so in that case the merge is computed with git in a treeless clone
+# and pushed with the SYNC_TOKEN secret (Contents + Workflows write).
 on:
   schedule:
     - cron: "23 */4 * * *"
   workflow_dispatch:
+    inputs:
+      force_git:
+        description: "Forcer la fusion par git (test du SYNC_TOKEN)"
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -19,33 +27,94 @@ jobs:
   sync:
     if: github.repository_owner != 'mozilla-firefox'
     runs-on: ubuntu-latest
+    timeout-minutes: 60
     env:
       GH_REPO: ${{ github.repository }}
       ISSUE_LABEL: sync-upstream
+      UPSTREAM: https://github.com/mozilla-firefox/firefox.git
     steps:
-      - name: Merge upstream main
-        id: merge
+      - name: Merge upstream with the Sync fork API
+        id: api
+        if: ${{ !inputs.force_git }}
         env:
-          # A fine-grained token with "Contents" and "Workflows" write access is
-          # needed when upstream changes files under .github/workflows.
-          GH_TOKEN: ${{ secrets.SYNC_TOKEN || github.token }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           set +e
           output=$(gh api -X POST "repos/$GH_REPO/merge-upstream" -f branch=main 2>&1)
           status=$?
           set -e
           echo "$output"
-          {
-            echo "output<<EOF"
-            echo "$output"
-            echo "EOF"
-          } >> "$GITHUB_OUTPUT"
-          if [ $status -ne 0 ]; then
-            echo "failed=true" >> "$GITHUB_OUTPUT"
+          if [ $status -eq 0 ]; then
+            echo "result=ok" >> "$GITHUB_OUTPUT"
+          elif echo "$output" | grep -q '"status":"409"'; then
+            echo "result=conflict" >> "$GITHUB_OUTPUT"
+          elif echo "$output" | grep -qi "workflow"; then
+            echo "result=workflow" >> "$GITHUB_OUTPUT"
+          else
+            echo "result=error" >> "$GITHUB_OUTPUT"
           fi
 
+      - name: Merge upstream with git
+        id: git
+        if: ${{ inputs.force_git || steps.api.outputs.result == 'workflow' }}
+        env:
+          SYNC_TOKEN: ${{ secrets.SYNC_TOKEN }}
+        run: |
+          if [ -z "$SYNC_TOKEN" ]; then
+            echo "result=no-token" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          git init -q repo && cd repo
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git remote add origin "https://x-access-token:${SYNC_TOKEN}@github.com/${GH_REPO}.git"
+          git remote add upstream "$UPSTREAM"
+          git fetch -q --filter=tree:0 origin main
+          git fetch -q --filter=tree:0 upstream main
+          ours=$(git rev-parse origin/main)
+          theirs=$(git rev-parse upstream/main)
+
+          if git merge-base --is-ancestor "$theirs" "$ours"; then
+            echo "Deja a jour."
+            echo "result=ok" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if git merge-base --is-ancestor "$ours" "$theirs"; then
+            new="$theirs"
+          else
+            set +e
+            tree=$(git merge-tree --write-tree "$ours" "$theirs")
+            status=$?
+            set -e
+            if [ $status -ne 0 ]; then
+              echo "$tree"
+              echo "result=conflict" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            tree=$(echo "$tree" | head -n1)
+            new=$(git commit-tree "$tree" -p "$ours" -p "$theirs" -m "Merge mozilla-firefox/firefox main into main")
+          fi
+
+          if git push -q origin "$new:refs/heads/main" 2>push.log; then
+            echo "main -> $new"
+            echo "result=ok" >> "$GITHUB_OUTPUT"
+          else
+            sed "s/${SYNC_TOKEN}/***/g" push.log
+            echo "result=push-error" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Summarize
+        id: final
+        run: |
+          api="${{ steps.api.outputs.result }}"
+          git="${{ steps.git.outputs.result }}"
+          result="${git:-$api}"
+          echo "result=$result" >> "$GITHUB_OUTPUT"
+          echo "Resultat : $result"
+
       - name: Close resolved sync issues
-        if: steps.merge.outputs.failed != 'true'
+        if: steps.final.outputs.result == 'ok'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -54,22 +123,26 @@ jobs:
           done
 
       - name: Report failure in an issue
-        if: steps.merge.outputs.failed == 'true'
+        if: steps.final.outputs.result != 'ok'
         env:
           GH_TOKEN: ${{ github.token }}
-          OUTPUT: ${{ steps.merge.outputs.output }}
+          RESULT: ${{ steps.final.outputs.result }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           gh label create "$ISSUE_LABEL" --color FFC837 --description "Echec de synchronisation avec Firefox" 2>/dev/null || true
 
-          if echo "$OUTPUT" | grep -qi "workflow"; then
-            reason="Firefox a modifie un fichier dans .github/workflows. Le jeton par defaut de GitHub n'a pas le droit de fusionner ce type de changement. Ajoute un secret SYNC_TOKEN (jeton fine-grained avec les droits Contents et Workflows en ecriture sur ce depot), puis relance l'action."
-          else
-            reason="Les mises a jour de Firefox entrent en conflit avec les modifications de CityCom. Il faut fusionner a la main : git fetch upstream, git merge upstream/main, resoudre les conflits, puis git push origin main."
-          fi
+          case "$RESULT" in
+            conflict)
+              reason="Les mises a jour de Firefox entrent en conflit avec les modifications de CityCom. Il faut fusionner a la main : git fetch upstream, git merge upstream/main, resoudre les conflits, puis git push origin main." ;;
+            no-token)
+              reason="Firefox a modifie un fichier dans .github/workflows et le secret SYNC_TOKEN est absent. Ajoute un jeton fine-grained avec les droits Contents et Workflows en ecriture sur ce depot." ;;
+            push-error)
+              reason="La fusion est prete mais le push avec SYNC_TOKEN a ete refuse. Verifie que le jeton n'a pas expire et qu'il a les droits Contents et Workflows en ecriture sur ce depot." ;;
+            *)
+              reason="Erreur inattendue pendant la synchronisation, voir le detail de l'execution." ;;
+          esac
 
-          body=$(printf '%s\n\n**Detail :**\n```\n%s\n```\n\nExecution : %s' "$reason" "$OUTPUT" "$RUN_URL")
-
+          body=$(printf '%s\n\nExecution : %s' "$reason" "$RUN_URL")
           existing=$(gh issue list --label "$ISSUE_LABEL" --state open --json number --jq '.[0].number')
           if [ -n "$existing" ]; then
             gh issue comment "$existing" --body "$body"
