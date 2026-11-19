@@ -2500,6 +2500,13 @@ pref("browser.smartwindow.smartformfill.disallowedRegions", "FR");
 // something other than a form the user fills in.
 pref("browser.smartwindow.smartformfill.minFormFields", 4);
 
+// How many characters of page text a fill sends, shared between the page and
+// the source tabs.
+pref("browser.smartwindow.smartformfill.maxPageContentLength", 10000);
+
+// How many open tabs Smart Form Fill considers as sources for a form.
+pref("browser.smartwindow.smartformfill.maxTabs", 30);
+
 #ifdef NIGHTLY_BUILD
 pref("browser.smartwindow.aitab.menus", true);
 #else
@@ -3047,6 +3054,11 @@ pref("browser.migrate.firefox.enabled", true);
 pref("browser.migrate.opera.enabled", true);
 pref("browser.migrate.opera-gx.enabled", true);
 pref("browser.migrate.safari.enabled", true);
+// Number of most recent URLs to import from Safari history, 0 for no limit.
+pref("browser.migrate.safari.history.limit", 0);
+// Number of recent visits to import per URL from Safari history, capped at
+// places.frecency.pages.numSampledVisits.
+pref("browser.migrate.safari.history.visit.limit", 5);
 pref("browser.migrate.vivaldi.enabled", true);
 
 pref("browser.migrate.content-modal.import-all.enabled", true);

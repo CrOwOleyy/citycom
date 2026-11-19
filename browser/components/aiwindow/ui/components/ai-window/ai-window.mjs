@@ -115,7 +115,7 @@ ChromeUtils.defineLazyGetter(lazy, "log", function () {
 });
 
 /**
- * @import { SmartbarAction } from "chrome://browser/content/aiwindow/components/input-cta/input-cta.mjs"
+ * @import { SmartbarAction } from "chrome://browser/content/aiwindow/components/input-cta.mjs"
  * @import { TabGroupColor } from "chrome://browser/content/tabbrowser/tabgroup.mjs"
  */
 
@@ -1630,7 +1630,9 @@ export class AIWindow extends MozLitElement {
     // TODO Bug 2077652: this is already the permanent path; drop the pill
     // fallback in the caller once cards ship for real (see the other
     // Bug 2077652 TODO there, on the early starters render).
-    this.resumeCards = resumeActivities.slice(0, MAX_RESUME_CARDS_DISPLAYED);
+    this.resumeCards = resumeActivities
+      .slice(0, MAX_RESUME_CARDS_DISPLAYED)
+      .map((card, rank) => ({ ...card, rank }));
     if (this.resumeCards.length) {
       lazy.ResumeActivity.clearSectionHiddenForSession();
       this.resumeSectionHidden = false;
