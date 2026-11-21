@@ -265,10 +265,6 @@ android {
 
     lint {
         lintConfig = file("../../shared-lint.xml")
-        baseline = file("lint-baseline.xml")
-        sarifReport = true
-        sarifOutput = file("../build/reports/lint/lint-report.sarif.json")
-        abortOnError = false
     }
 
     // Exclude native libraries for unsupported architectures from third-party dependencies
