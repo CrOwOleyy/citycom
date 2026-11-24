@@ -39,9 +39,9 @@ import {
 import { embeddingsGeneratorFactory } from "chrome://global/content/ml/EmbeddingsGenerator.sys.mjs";
 import { SmartTabGroupingManager } from "moz-src:///browser/components/tabbrowser/SmartTabGrouping.sys.mjs";
 import { UI_TYPES } from "moz-src:///browser/components/aiwindow/ui/modules/ToolUI.sys.mjs";
+import { XPCOMUtils } from "resource://gre/modules/XPCOMUtils.sys.mjs";
 
-const lazy = {};
-ChromeUtils.defineESModuleGetters(lazy, {
+const lazy = XPCOMUtils.declareLazy({
   AIWindow:
     "moz-src:///browser/components/aiwindow/ui/modules/AIWindow.sys.mjs",
   BrowserWindowTracker: "resource:///modules/BrowserWindowTracker.sys.mjs",
@@ -64,14 +64,12 @@ ChromeUtils.defineESModuleGetters(lazy, {
   // @todo Bug 2009194
   // PageDataService:
   //   "moz-src:///browser/components/pagedata/PageDataService.sys.mjs",
+  console: () =>
+    console.createInstance({
+      logModule: "Conversation",
+      maxLogLevelPref: "browser.smartwindow.conversation.logLevel",
+    }),
 });
-
-ChromeUtils.defineLazyGetter(lazy, "console", () =>
-  console.createInstance({
-    logModule: "Conversation",
-    maxLogLevelPref: "browser.smartwindow.conversation.logLevel",
-  })
-);
 
 // Important! Changing or removing this value requires a security review.
 //
@@ -915,10 +913,28 @@ export class RunSearch {
   /**
    * @param {object} [toolParams]
    * @param {BrowsingContext} browsingContext
-   * @param {ChatConversation} conversation
+   * @param {ChatConversation} [conversation] - Its last user message is the
+   *   query when toolParams has none, and a conversation without one gets an
+   *   error. Only when no conversation is passed is the most recent stored
+   *   user message used instead.
+   * @param {nsISearchEngine} [engine] - The default search engine, already
+   *   looked up. Passing it means performSearch awaits nothing before it
+   *   navigates; without it, performSearch looks the engine up.
+   * @param {AbortSignal} [signal] - The chat response's signal. Stopping the
+   *   response before the chat's tab is selected cancels the search. Once the
+   *   tab is selected the search finishes, including while a full-page chat
+   *   moves to the sidebar.
    * @returns {Promise<string>}
+   * @throws {DOMException} The signal's AbortError when the response was
+   *   stopped before the chat's tab was selected.
    */
-  static async runSearch(toolParams, browsingContext, conversation) {
+  static async runSearch(
+    toolParams,
+    browsingContext,
+    conversation,
+    engine,
+    signal
+  ) {
     // No security check, always allowed because we assume that the search
     // provider is trusted.
 
@@ -927,14 +943,25 @@ export class RunSearch {
     if (toolParams.query) {
       query = toolParams.query;
     } else {
-      const recentUserMessages = await ChatStore.getMostRecentMessages(
-        MESSAGE_ROLE.USER,
-        1
-      );
-      if (!recentUserMessages.length) {
-        return "Error: no user messages stored to user as the search query.";
+      // Stored messages span every chat, so read them only when no
+      // conversation was passed to take the user's message from.
+      let userMessage;
+      if (conversation) {
+        userMessage = conversation.messages?.findLast(
+          m => m.role === MESSAGE_ROLE.USER
+        );
+      } else {
+        [userMessage] = await ChatStore.getMostRecentMessages(
+          MESSAGE_ROLE.USER,
+          1
+        );
+        // Stopping during the read cancels the search before the tab is touched.
+        signal?.throwIfAborted();
       }
-      query = recentUserMessages[0].content.body;
+      if (!userMessage) {
+        return "Error: no user messages stored to use as the search query.";
+      }
+      query = userMessage.content.body;
     }
 
     if (!query || typeof query !== "string" || !query.trim()) {
@@ -955,6 +982,12 @@ export class RunSearch {
     let targetTab =
       originalBrowser && win.gBrowser?.getTabForBrowser(originalBrowser);
 
+    // Checked before the tab switch and the move to the sidebar, and not
+    // after: a chat moved to the sidebar must finish its search, or it is left
+    // open in both the full page and the sidebar. The navigation also aborts a
+    // full-page chat's signal, so later aborts do not mean the user stopped.
+    signal?.throwIfAborted();
+
     if (targetTab) {
       // Switch to the original tab if it's different from currently selected
       RunSearch.#ensureTabSelected(targetTab);
@@ -974,7 +1007,12 @@ export class RunSearch {
 
     let result;
     try {
-      await RunSearch.#performSearchAndWait(win, originalBrowser, query.trim());
+      await RunSearch.#performSearchAndWait(
+        win,
+        originalBrowser,
+        query.trim(),
+        engine
+      );
       result = RunSearch.#extractSerpContent(originalBrowser, conversation);
     } catch (e) {
       console.error("[RunSearch] search failed:", e);
@@ -1038,8 +1076,10 @@ export class RunSearch {
    * @param {Window} win
    * @param {XULElement} browser
    * @param {string} query
+   * @param {nsISearchEngine} [engine] - The engine to search with, passed
+   *   through to performSearch.
    */
-  static async #performSearchAndWait(win, browser, query) {
+  static async #performSearchAndWait(win, browser, query, engine) {
     const navigationPromise = new Promise((resolve, reject) => {
       const timeout = lazy.setTimeout(() => {
         win.gBrowser.removeProgressListener(listener);
@@ -1071,7 +1111,7 @@ export class RunSearch {
       win.gBrowser.addProgressListener(listener);
     });
 
-    await lazy.AIWindow.performSearch(query, win);
+    await lazy.AIWindow.performSearch(query, win, engine);
     await navigationPromise;
     await lazy.AIWindow.focusSidebar(win);
 
