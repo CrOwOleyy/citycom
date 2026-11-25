@@ -3040,6 +3040,12 @@
   value: true
   mirror: always
 
+# Whether drag events have non-zero clientX/Y, etc.
+- name: dom.event.drag.include_coordinates
+  type: bool
+  value: true
+  mirror: always
+
 - name: dom.event.dragexit.enabled
   type: bool
   value: @IS_NOT_NIGHTLY_BUILD@
@@ -3283,13 +3289,6 @@
 - name: dom.fetchObserver.enabled
   type: RelaxedAtomicBool
   value: false
-  mirror: always
-
-# Whether to set the incremental flag on the top level document's
-# priority header
-- name: dom.document_priority.incremental
-  type: RelaxedAtomicBool
-  value: true
   mirror: always
 
 # Whether the Document PictureInPicture API is enabled
@@ -9508,12 +9507,6 @@
   value: false
   mirror: always
 
-# Whether to set the incremental attribute in the Priority header for images
-- name: image.priority.incremental
-  type: RelaxedAtomicBool
-  value: true
-  mirror: always
-
 # How strict we are in accepting/rejecting AVIF inputs according to whether they
 # conform to the specification
 # 0 = Permissive: accept whatever we can simply, unambiguously interpret
@@ -12260,7 +12253,7 @@
 # Is support for the unprefixed 'line-clamp' property enabled?
 - name: layout.css.line-clamp.enabled
   type: RelaxedAtomicBool
-  value: false
+  value: @IS_NIGHTLY_BUILD@
   mirror: always
   rust: true
 
@@ -15409,6 +15402,12 @@
 
 # Whether to add urgency and incremental to request headers
 - name: network.http.priority_header.enabled
+  type: RelaxedAtomicBool
+  value: true
+  mirror: always
+
+# Set the incremental flag by default based on the content policy type.
+- name: network.http.priority.incremental_by_default
   type: RelaxedAtomicBool
   value: true
   mirror: always
