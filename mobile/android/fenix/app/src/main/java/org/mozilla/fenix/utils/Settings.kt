@@ -307,6 +307,13 @@ class Settings(
             default = { homescreenSections[HomeScreenSection.TOP_SITES] == true },
         )
 
+    /** Indicates whether or not the top frecent sites are shown along with the pinned top sites. */
+    var showTopFrecentSites by
+        booleanPreference(
+            appContext.getPreferenceKey(R.string.pref_key_show_top_frecent_sites),
+            default = true,
+        )
+
     /** Indicates whether or not the privacy report should be shown on the home screen. */
     var showPrivacyReportFeature by
         booleanPreference(
@@ -2705,13 +2712,6 @@ class Settings(
         booleanPreference(
             key = appContext.getPreferenceKey(R.string.pref_key_enable_ads_client_for_stories),
             default = { FxNimbus.features.adsClientForStories.value().enabled },
-        )
-
-    /** Indicates if more shortcuts should be shown. */
-    var showMoreShortcuts by
-        booleanPreference(
-            key = appContext.getPreferenceKey(R.string.pref_key_show_more_shortcuts),
-            default = { FxNimbus.features.showMoreShortcuts.value().enabled },
         )
 
     /** Indicates if the regional default shortcuts are enabled. */
