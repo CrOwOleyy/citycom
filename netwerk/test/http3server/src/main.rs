@@ -96,6 +96,9 @@ struct Http3TestServer {
     // simulating a stuck ZERORTT session that never transitions to CONNECTED.
     stuck_0rtt_mode: bool,
     stuck_0rtt_activated: bool,
+    // When true, server will stop processing datagrams from `blackhole_addr`.
+    is_blackhole_mode: bool,
+    blackhole_addr: Option<SocketAddr>,
 }
 
 impl ::std::fmt::Display for Http3TestServer {
@@ -122,6 +125,8 @@ impl Http3TestServer {
             datagram_floods: Vec::new(),
             stuck_0rtt_mode: false,
             stuck_0rtt_activated: false,
+            is_blackhole_mode: false,
+            blackhole_addr: None,
         }
     }
 
@@ -295,6 +300,14 @@ impl HttpServer for Http3TestServer {
             return OutputBatch::Callback(Duration::from_millis(100));
         }
 
+        let mut dgrams_peek = dgrams.into_iter().peekable();
+
+        if self.is_blackhole_mode && self.blackhole_addr.is_none() {
+            self.blackhole_addr = dgrams_peek.peek().map(|d| d.source());
+        }
+
+        let dgrams = dgrams_peek.filter(|dgram| Some(dgram.source()) != self.blackhole_addr);
+
         let output = self.server.process_multiple(dgrams, now, max_datagrams);
 
         // If we just processed datagrams with stuck mode enabled, mark it as activated
@@ -422,6 +435,26 @@ impl HttpServer for Http3TestServer {
                                         Header::new(
                                             "content-length",
                                             response_body.len().to_string(),
+                                        ),
+                                    ])
+                                    .unwrap();
+                                self.new_response(stream, response_body, now);
+                            } else if path == b"/SetBlackhole" {
+                                info!("Enabling Blackhole mode for the current connection.");
+                                self.is_blackhole_mode = true;
+                                let response_body = b"Blackhole mode enabled".to_vec();
+                                stream
+                                    .send_headers(&[
+                                        Header::new(":status", "200"),
+                                        Header::new("cache-control", "no-cache"),
+                                        Header::new("content-type", "text/plain"),
+                                        Header::new(
+                                            "content-length",
+                                            response_body.len().to_string(),
+                                        ),
+                                        Header::new(
+                                            "x-http3-conn-hash",
+                                            connection_hash.to_string(),
                                         ),
                                     ])
                                     .unwrap();
@@ -1299,8 +1332,12 @@ impl HttpServer for Http3ReverseProxyServer {
 
 struct Http3ConnectProxyServer {
     server: Http3Server,
-    tcp_streams: HashMap<StreamId, TcpStream>,
+    // Keyed by the stream rather than its StreamId, which is only unique within
+    // a connection.
+    tcp_streams: HashMap<Http3OrWebTransportStream, TcpStream>,
     udp_sockets: HashMap<StreamId, UdpSocket>,
+    // When set, CONNECT requests without a Proxy-Authorization header get a 407.
+    require_auth: bool,
 }
 
 impl ::std::fmt::Display for Http3ConnectProxyServer {
@@ -1315,6 +1352,7 @@ impl Http3ConnectProxyServer {
             server,
             tcp_streams: HashMap::new(),
             udp_sockets: HashMap::new(),
+            require_auth: env::var("MOZ_HTTP3_PROXY_REQUIRE_AUTH").is_ok(),
         }
     }
 }
@@ -1347,6 +1385,19 @@ impl HttpServer for Http3ConnectProxyServer {
                         "{:?} not supported",
                         method_hdr.value_utf8().unwrap_or("<invalid utf8>")
                     );
+                    if self.require_auth
+                        && !headers.iter().any(|h| h.name() == "proxy-authorization")
+                    {
+                        stream
+                            .send_headers(&[
+                                Header::new(":status", "407"),
+                                Header::new("proxy-authenticate", "Basic realm='foo'"),
+                            ])
+                            .unwrap();
+                        stream.stream_close_send(now).unwrap();
+                        continue;
+                    }
+
                     let host_hdr = headers.iter().find(|&h| h.name() == ":authority").unwrap();
                     let host_str = host_hdr.value_utf8().unwrap();
 
@@ -1396,7 +1447,7 @@ impl HttpServer for Http3ConnectProxyServer {
                         ])
                         .unwrap();
                     self.tcp_streams.insert(
-                        stream.stream_id(),
+                        stream.clone(),
                         TcpStream {
                             send_buffer: VecDeque::new(),
                             recv_buffer: VecDeque::new(),
@@ -1409,7 +1460,7 @@ impl HttpServer for Http3ConnectProxyServer {
                 }
                 Http3ServerEvent::Data { stream, data, fin } => {
                     trace!("tcp_stream send to server len={}", data.len());
-                    let tcp_stream = self.tcp_streams.get_mut(&stream.stream_id()).unwrap();
+                    let tcp_stream = self.tcp_streams.get_mut(&stream).unwrap();
                     // TODO: extend() effectively breaks backpressure.
                     tcp_stream.send_buffer.extend(data);
                     tcp_stream.send_fin |= fin;
@@ -1419,7 +1470,7 @@ impl HttpServer for Http3ConnectProxyServer {
                         "Http3ServerEvent::DataWritable streamid={}",
                         stream.stream_id()
                     );
-                    let tcp_stream = self.tcp_streams.get_mut(&stream.stream_id()).unwrap();
+                    let tcp_stream = self.tcp_streams.get_mut(&stream).unwrap();
                     while !tcp_stream.recv_buffer.is_empty() {
                         match stream.send_data(&tcp_stream.recv_buffer.make_contiguous(), now) {
                             Ok(sent) => {

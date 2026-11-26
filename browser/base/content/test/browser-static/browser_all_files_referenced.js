@@ -75,6 +75,11 @@ var gExceptionPaths = [
   // Exclude all services-automation because they are used through webdriver
   "moz-src:///services/automation/",
 
+  // BrowserAIDriver.sys.mjs is only loaded dynamically via ChromeUtils.importESModule
+  // from bootstrap.js, which is injected by the external Python ai driver through
+  // Selenium, similar to services/automation above.
+  "moz-src:///browser/components/ai/driver/",
+
   // Paths from this folder are constructed in NetErrorParent.sys.mjs based on
   // the type of cert or net error the user is encountering.
   "chrome://global/content/neterror/supportpages/",
@@ -352,6 +357,10 @@ var allowlist = [
   // Bug 2092347: Smart Window Digests will use this modal.
   {
     file: "chrome://browser/content/aiwindow/components/smartwindow-digest-modal.mjs",
+  },
+  // Bug 2088187: Smart Window Digests Toasts.
+  {
+    file: "chrome://browser/content/aiwindow/components/smartwindow-digest-toast.mjs",
   },
 ];
 

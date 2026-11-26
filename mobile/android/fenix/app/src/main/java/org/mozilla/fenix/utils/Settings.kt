@@ -2901,13 +2901,6 @@ class Settings(
             default = { FxNimbus.features.microsurveys.value().enabled },
         )
 
-    /** Nimbus controlled feature flag that Indicates if the Shake to Summarize feature should be enabled */
-    var shakeToSummarizeFeatureFlagEnabled by
-        booleanPreference(
-            key = appContext.getPreferenceKey(R.string.pref_key_enable_shake_to_summarize),
-            default = { FxNimbus.features.shakeToSummarize.value().enabled },
-        )
-
     /**
      * Secret-settings override for the tab reload cover base feature. Defaults to the Nimbus `tab-reload-cover.enabled`
      * value so the toggle initially reflects the Nimbus configuration; once toggled, the pref becomes the source of
@@ -3015,6 +3008,21 @@ class Settings(
 
     private val lastDataLimitNoticeCycleResetTimeKey =
         appContext.getPreferenceKey(R.string.pref_key_ip_protection_last_data_limit_notice_cycle_reset_time)
+
+    /** The reset time of the most recently observed metered VPN usage cycle. */
+    var ipProtectionLastUsageCycleResetTime: String?
+        get() = preferences.getString(lastUsageCycleResetTimeKey, null)
+        set(value) = preferences.edit { putString(lastUsageCycleResetTimeKey, value) }
+
+    private val lastUsageCycleResetTimeKey =
+        appContext.getPreferenceKey(R.string.pref_key_ip_protection_last_usage_cycle_reset_time)
+
+    var ipProtectionUsageQuotaResetPromptPending: Boolean
+        get() = preferences.getBoolean(usageQuotaResetPromptPendingKey, false)
+        set(value) = preferences.edit { putBoolean(usageQuotaResetPromptPendingKey, value) }
+
+    private val usageQuotaResetPromptPendingKey =
+        appContext.getPreferenceKey(R.string.pref_key_ip_protection_usage_quota_reset_prompt_pending)
 
     /** Indicates if the IPProtection onboarding bottom sheet feature variable is enabled via Nimbus. */
     val shouldShowIPProtectionOnboardingBottomSheet: Boolean
@@ -3352,7 +3360,7 @@ class Settings(
     var tabGroupsEnabled by
         booleanPreference(
             key = appContext.getPreferenceKey(R.string.pref_key_tab_groups),
-            default = { DefaultTabManagementFeatureHelper.tabGroupsEnabled },
+            default = true,
         )
 
     /** Whether drag and drop is enabled for the Tab Groups feature. */
