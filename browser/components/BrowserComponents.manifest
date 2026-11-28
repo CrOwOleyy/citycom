@@ -40,7 +40,7 @@ category browser-quit-application-granted moz-src:///browser/modules/ASWebAuthSe
 #endif
 
 # Browser window lifecycle consumers
-category browser-window-before-initial-xul-layout-document-preparation chrome://browser/content/browser-customization.js AutoHideMenubar.init
+category browser-window-before-initial-xul-layout-document-preparation moz-src:///browser/components/customizableui/BrowserCustomization.sys.mjs AutoHideMenubar.init
 
 category browser-window-before-initial-xul-layout resource://gre/modules/LightweightThemeConsumer.sys.mjs LightweightThemeConsumer.init
 category browser-window-before-initial-xul-layout moz-src:///browser/themes/ToolbarIconColor.sys.mjs ToolbarIconColor.init
@@ -237,6 +237,8 @@ category browser-idle-startup resource://gre/modules/DefaultAgentScheduler.sys.m
 category browser-idle-startup moz-src:///browser/components/defaultlaunchonlogin/DefaultLaunchOnLogin.sys.mjs DefaultLaunchOnLogin.maybeEnableOnFirstRun
 category browser-idle-startup moz-src:///browser/components/shell/StartupOSIntegration.sys.mjs StartupOSIntegration.onStartupIdle
 #endif
+
+category browser-best-effort-idle-startup resource://passwordmgr/passwordstorage.sys.mjs LoginManagerStorage.recordDecryptability
 
 # Note that these telemetry entries schedule their own idle tasks,
 # so they are guaranteed to run after everything else.
